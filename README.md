@@ -105,3 +105,53 @@ python src/predict.py
 Predicted House Value: <value>
 ```
 ---
+
+6) Test the API (Flask + MLflow Model)
+Option 1: Run API Locally
+
+First, run the API service:
+python src/api_service.py
+
+It should show:
+Loading model from: models:/CaliforniaHousingModel/1
+ * Running on http://0.0.0.0:9696
+
+Make a Prediction
+Run the provided test script to send a sample POST request:
+python src/test_api.py
+
+
+Expected Output:
+Status Code: 200
+Response: {'prediction': 3.45}
+
+
+Test using a POST request:
+curl -X POST http://localhost:9696/predict \
+     -H "Content-Type: application/json" \
+     -d '{"MedInc": 8.3, "HouseAge": 41.0, "AveRooms": 6.1, "AveBedrms": 1.1, "Population": 980.0, "AveOccup": 2.5, "Latitude": 34.0, "Longitude": -118.0}'
+
+7) Dockerize the API
+Build Docker Image
+docker build -t housing-api .
+
+Run Docker Container
+docker run -p 9696:9696 housing-api
+
+API Endpoint
+http://localhost:9696/predict
+
+Sample Input
+{
+  "MedInc": 8.3,
+  "HouseAge": 41.0,
+  "AveRooms": 6.1,
+  "AveBedrms": 1.1,
+  "Population": 980.0,
+  "AveOccup": 2.5,
+  "Latitude": 34.0,
+  "Longitude": -118.0
+}
+
+Sample Output
+{"prediction": 3.45}
