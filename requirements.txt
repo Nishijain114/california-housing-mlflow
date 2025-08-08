@@ -8,3 +8,4 @@ python-dotenv
 pydantic
 dvc
 requests
+prometheus_fastapi_instrumentator

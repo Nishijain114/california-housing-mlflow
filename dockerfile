@@ -6,21 +6,10 @@
 # on port 9696 and runs api_service.py inside a slim Python base.
 # ---------------------------------------------------------------
 
-# Use a lightweight Python base image
-FROM python:3.10-slim
+FROM python:3.9
 
-# Set the working directory inside the container
 WORKDIR /app
+COPY . .
+RUN pip install -r requirements.txt
 
-# Copy only necessary files
-COPY api_service.py ./
-COPY requirements.txt ./
-
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Expose the API port
-EXPOSE 9696
-
-# Run the Flask app
-CMD ["python", "api_service.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -155,3 +155,29 @@ Sample Input
 
 Sample Output
 {"prediction": 3.45}
+
+
+
+# Nishi's project structure 
+# ------------------------
+# Directory Structure:
+# ------------------------
+# ml_project/
+# ├── data/                   # Raw and processed data
+# │   ├── raw/
+# │   └── processed/
+# ├── models/                # Saved ML models
+# ├── notebooks/             # EDA and prototyping
+# ├── src/                   # Source code
+# │   ├── train.py          # Model training logic
+# │   ├── predict.py        # API input/output logic
+# │   ├── logger.py         # Logging util
+# │   └── utils.py          # Reusable functions
+# ├── app/
+# │   ├── main.py           # FastAPI/Flask app
+# │   └── schemas.py        # Pydantic models
+# ├── Dockerfile
+# ├── requirements.txt
+# ├── .github/workflows/
+# │   └── main.yml         # GitHub Actions CI/CD
+# └── README.md
