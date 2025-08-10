@@ -9,7 +9,6 @@ import time
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-import logging
 from fastapi import Response
 from fastapi.responses import HTMLResponse
 
@@ -159,7 +158,7 @@ def predict(input_data: HousingInput):
         logger.error("Prediction failed: %s", e, exc_info=True)
         log_prediction(timestamp, input_data.dict(), [], 500, process_time)
 
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/logs", response_class=HTMLResponse)
@@ -215,7 +214,7 @@ def get_logs_html():
         return Response(content=html_content, media_type="text/html")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not fetch logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Prometheus instrumentation
