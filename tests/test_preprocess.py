@@ -1,11 +1,10 @@
-import os
 import pandas as pd
 import pytest
-from data.preprocess import split_and_preprocess
+from src.data.preprocess import split_and_preprocess
 
 @pytest.fixture
-def sample_csv(tmp_path):
-    # Create a small sample CSV for testing
+def sample_csv_path(tmp_path):
+    """Creates a small sample CSV file for testing preprocessing."""
     data = {
         "longitude": [-118.0, -117.0],
         "latitude": [34.0, 35.0],
@@ -23,26 +22,35 @@ def sample_csv(tmp_path):
     df.to_csv(csv_path, index=False)
     return csv_path
 
-def test_split_and_preprocess(sample_csv, tmp_path):
+def test_split_and_preprocess(sample_csv_path, tmp_path):
     output_dir = tmp_path / "output"
     output_dir.mkdir()
 
     # Run preprocessing
     split_and_preprocess(
-        input_path=str(sample_csv),
+        input_path=str(sample_csv_path),
         output_path=str(output_dir),
         test_size=0.5,
         random_state=42,
         target_column="median_house_value"
     )
 
-    # Check if processed files exist
     processed_dir = output_dir / "processed"
-    assert (processed_dir / "X_train.csv").exists()
-    assert (processed_dir / "X_test.csv").exists()
-    assert (processed_dir / "y_train.csv").exists()
-    assert (processed_dir / "y_test.csv").exists()
 
-    # Optionally check content of one file
-    X_train = pd.read_csv(processed_dir / "X_train.csv")
-    assert "ocean_proximity_INLAND" in X_train.columns or "ocean_proximity_NEAR BAY" in X_train.columns
+    # Assert that all processed files exist
+    expected_files = ["X_train.csv", "X_test.csv", "y_train.csv", "y_test.csv"]
+    for filename in expected_files:
+        file_path = processed_dir / filename
+        assert file_path.exists(), f"{filename} does not exist in processed directory"
+
+    # Load processed features to verify one-hot encoding worked correctly
+    X_train_df = pd.read_csv(processed_dir / "X_train.csv")
+    ocean_prox_cols = [col for col in X_train_df.columns if col.startswith("ocean_proximity_")]
+
+    # Assert one-hot encoded columns for ocean_proximity exist
+    assert len(ocean_prox_cols) > 0, "No one-hot encoded ocean_proximity columns found"
+
+    # Assert known categories are present in columns
+    known_categories = {"ocean_proximity_INLAND", "ocean_proximity_NEAR BAY"}
+    assert known_categories.intersection(set(X_train_df.columns)), \
+        "Expected ocean_proximity one-hot columns not found in features"

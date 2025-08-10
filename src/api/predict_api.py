@@ -8,8 +8,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR, "src"))
 
-from logger import get_logger
-from api.schemas import HousingInput
+from src.logger import get_logger
+from src.api.schemas import HousingInput
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,7 +33,7 @@ try:
     scaler = joblib.load(SCALER_PATH)
     logger.info("Model and scaler loaded successfully.")
 except Exception as e:
-    logger.error(f"Failed to load model or scaler: {e}")
+    logger.error("Failed to load model or scaler: %s", e)
     raise e
 
 # List the exact categories your model expects for ocean_proximity, same as training
@@ -88,11 +88,11 @@ def predict(input_data: HousingInput):
         # Predict
         prediction = model.predict(input_scaled)
 
-        logger.info(f"Prediction made for input: {input_data.dict()}")
+        logger.info("Prediction made for input: %s", input_data.dict())
         return {"predictions": prediction.tolist()}
 
     except Exception as e:
-        logger.error(f"Prediction failed: {e}")
+        logger.error("Prediction failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Register Prometheus instrumentation here (before startup)

@@ -23,7 +23,7 @@ input_data = {
 }
 
 try:
-    response = requests.post(url, json=input_data)
+    response = requests.post(url, json=input_data, timeout=10)
     response.raise_for_status()  # Raise an error for bad status codes
     print("Status Code:", response.status_code)
     print("Response JSON:", response.json())
