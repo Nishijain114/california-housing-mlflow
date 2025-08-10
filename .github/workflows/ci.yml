@@ -26,15 +26,15 @@ jobs:
 
       - name: Lint code with pylint
         env:
-          PYTHONPATH:
+          PYTHONPATH: .
         run: |
-          pylint --disable=R,C src
+          pylint --disable=R,C src tests
 
-      #- name: Run tests with pytest
-        #env:
-          #PYTHONPATH:
-        #run: |
-          #pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
+      - name: Run tests with pytest
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/test_preprocess_data.py --maxfail=3 --disable-warnings -q
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -57,4 +57,4 @@ jobs:
         run: pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
 
       - name: Stop Docker container
-        run: docker stop my-api-container
+        run: docker stop california_housing_container
