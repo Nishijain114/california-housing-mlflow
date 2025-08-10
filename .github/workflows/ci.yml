@@ -49,8 +49,9 @@ jobs:
         run: docker push nishijain411/california_housing:latest
 
       - name: Run Docker container
-        run: docker run -d -p 8000:8000 --name california_housing_container abc/california_housing:latest
-        run: sleep 10
+        run: |
+          docker run -d -p 8000:8000 --name california_housing_container nishijain411/california_housing:latest
+          sleep 10
 
       - name: Run tests
         run: pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
