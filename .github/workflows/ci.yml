@@ -30,7 +30,7 @@ jobs:
         run: |
           pylint --disable=R,C src tests
 
-      - name: Run tests with pytest
+      - name: Run preprocess test with pytest
         env:
           PYTHONPATH: .
         run: |
@@ -53,8 +53,10 @@ jobs:
           docker run -d -p 8000:8000 --name california_housing_container nishijain411/california_housing:latest
           sleep 10
 
-      - name: Run tests
+      - name: Run test_prediction test with pytest
         run: pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
 
-      - name: Stop Docker container
-        run: docker stop california_housing_container
+      - name: Stop and remove container
+        run: |
+          docker stop california_housing_container || true
+          docker rm california_housing_container || true
