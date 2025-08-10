@@ -36,7 +36,8 @@ def safe_json_loads(s):
 def startup():
     # Ensure directory exists
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    logger.info(f"Ensuring DB directory exists and creating/checking DB table at {DB_PATH}")
+    logger.info("Ensuring DB directory exists and creating/checking DB table at %s", DB_PATH)
+
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
@@ -52,8 +53,9 @@ def startup():
             """)
             conn.commit()
         logger.info("SQLite table 'prediction_logs' is ready.")
+
     except Exception as e:
-        logger.error(f"Error creating SQLite table: {e}", exc_info=True)
+        logger.error("Error creating SQLite table: %s", e, exc_info=True)
         raise
 
 app.add_middleware(
@@ -72,7 +74,7 @@ try:
     scaler = joblib.load(SCALER_PATH)
     logger.info("Model and scaler loaded successfully.")
 except Exception as e:
-    logger.error(f"Failed to load model or scaler: {e}", exc_info=True)
+    logger.error("Failed to load model or scaler: %s", e, exc_info=True)
     raise e
 
 OCEAN_CATEGORIES = [
@@ -93,7 +95,7 @@ FEATURE_COLUMNS = [
 
 def log_prediction(timestamp, request_data, prediction, status_code, process_time):
     try:
-        logger.info(f"Logging prediction at {timestamp}")
+        logger.info("Logging prediction at %s", timestamp)
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -111,8 +113,8 @@ def log_prediction(timestamp, request_data, prediction, status_code, process_tim
             )
             conn.commit()
         logger.info("Prediction logged successfully.")
-    except Exception as e:
-        logger.error(f"Failed to insert prediction log: {e}", exc_info=True)
+    except (sqlite3.Error, json.JSONDecodeError) as e:
+        logger.error("Failed to insert prediction log: %s", e, exc_info=True)
 
 @app.get("/")
 def read_root():
@@ -145,14 +147,16 @@ def predict(input_data: HousingInput):
 
         log_prediction(timestamp, input_data.dict(), prediction_list, 200, process_time)
 
-        logger.info(f"Prediction made for input: {input_data.dict()}, Output: {prediction_list}, Time: {process_time:.2f}ms")
+        logger.info("Prediction made for input: %s, Output: %s, Time: %.2fms",
+            input_data.dict(), prediction_list, process_time)
+
         return {"predictions": prediction_list}
 
     except Exception as e:
         process_time = (time.time() - start_time) * 1000
         timestamp = datetime.now().isoformat()
 
-        logger.error(f"Prediction failed: {e}", exc_info=True)
+        logger.error("Prediction failed: %s", e, exc_info=True)
         log_prediction(timestamp, input_data.dict(), [], 500, process_time)
 
         raise HTTPException(status_code=500, detail=str(e))

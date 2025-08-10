@@ -1,5 +1,4 @@
 import sqlite3
-import os
 def safe_json_loads(s):
     try:
         return json.loads(s)
