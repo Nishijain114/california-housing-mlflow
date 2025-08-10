@@ -30,11 +30,11 @@ jobs:
         run: |
           pylint --disable=R,C src
 
-      #- name: Run tests with pytest
-       # env:
-      #    PYTHONPATH:
-        #run: |
-       #   pytest tests/test_preprocess.py --maxfail=3 --disable-warnings -q
+      - name: Run tests with pytest
+        env:
+          PYTHONPATH:
+        run: |
+          pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
