@@ -30,11 +30,11 @@ jobs:
         run: |
           pylint --disable=R,C src tests
 
-      #- name: Run preprocess test with pytest
-       # env:
-       #   PYTHONPATH: .
-        #run: |
-       #   pytest tests/test_preprocess_data.py --maxfail=3 --disable-warnings -q
+      - name: Run test_model_file_exists with pytest
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/test_model_file_exists.py --maxfail=3 --disable-warnings -q
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -53,7 +53,7 @@ jobs:
           docker run -d -p 8000:8000 --name california_housing_container nishijain411/california_housing:latest
           sleep 10
 
-      - name: Run test_prediction test with pytest
+      - name: Run test_prediction test on docker image with pytest
         run: pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
 
       - name: View container logs
