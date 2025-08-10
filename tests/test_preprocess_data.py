@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import joblib
-import pytest
 from src.data.preprocess import split_and_preprocess
 
 def test_split_and_preprocess(tmp_path):
