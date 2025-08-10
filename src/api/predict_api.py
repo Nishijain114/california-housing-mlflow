@@ -1,8 +1,5 @@
-#
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import joblib
-import numpy as np
 import pandas as pd
 import os
 import sys
@@ -96,7 +93,7 @@ def predict(input_data: HousingInput):
 
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Register Prometheus instrumentation here (before startup)
 instrumentator = Instrumentator()
