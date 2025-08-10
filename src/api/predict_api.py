@@ -10,6 +10,8 @@ from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 import logging
+from fastapi import Response
+from fastapi.responses import HTMLResponse
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(ROOT_DIR)
@@ -23,6 +25,12 @@ logger = get_logger(__name__)
 DB_PATH = os.path.join(ROOT_DIR, "prediction_logs.db")
 
 app = FastAPI(title="California Housing Price Predictor")
+
+def safe_json_loads(s):
+    try:
+        return json.loads(s) if s else None
+    except json.JSONDecodeError:
+        return None
 
 @app.on_event("startup")
 def startup():
@@ -148,6 +156,63 @@ def predict(input_data: HousingInput):
         log_prediction(timestamp, input_data.dict(), [], 500, process_time)
 
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/logs", response_class=HTMLResponse)
+def get_logs_html():
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT timestamp, request_data, prediction, status_code, process_time FROM prediction_logs
+                ORDER BY timestamp DESC
+                LIMIT 100
+            """)
+            rows = cursor.fetchall()
+
+        html_content = """
+        <html>
+        <head><title>Prediction Logs</title></head>
+        <body>
+        <h2>Prediction Logs</h2>
+        <table border="1" cellpadding="5" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Request Data</th>
+                    <th>Prediction</th>
+                    <th>Status Code</th>
+                    <th>Process Time (ms)</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+
+        for row in rows:
+            request_data = safe_json_loads(row[1])
+            prediction = safe_json_loads(row[2])
+            html_content += f"""
+                <tr>
+                    <td>{row[0]}</td>
+                    <td><pre>{json.dumps(request_data, indent=2)}</pre></td>
+                    <td><pre>{json.dumps(prediction, indent=2)}</pre></td>
+                    <td>{row[3]}</td>
+                    <td>{row[4]}</td>
+                </tr>
+            """
+
+        html_content += """
+            </tbody>
+        </table>
+        </body>
+        </html>
+        """
+
+        return Response(content=html_content, media_type="text/html")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not fetch logs: {str(e)}")
+
 
 # Prometheus instrumentation
 instrumentator = Instrumentator()
