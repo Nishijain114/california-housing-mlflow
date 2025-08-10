@@ -1,0 +1,35 @@
+{
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Requests",
+      "targets": [
+        { "expr": "sum(instrumentator_request_count_total)", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests per Endpoint",
+      "targets": [
+        { "expr": "sum by (handler) (rate(instrumentator_request_count_total[1m]))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "gauge",
+      "title": "Average Latency (p50)",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(instrumentator_request_duration_seconds_bucket[1m])) by (le))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error Count",
+      "targets": [
+        { "expr": "sum(instrumentator_request_count_total{status!=\"2xx\"})", "refId": "A" }
+      ]
+    }
+  ],
+  "title": "California Housing API Metrics",
+  "version": 1
+}

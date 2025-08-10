@@ -3,6 +3,13 @@ import joblib
 import pandas as pd
 import os
 import sys
+import sqlite3
+import json
+import time
+from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+import logging
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(ROOT_DIR)
@@ -10,12 +17,36 @@ sys.path.append(os.path.join(ROOT_DIR, "src"))
 
 from src.logger import get_logger
 from src.api.schemas import HousingInput
-from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi.middleware.cors import CORSMiddleware
 
 logger = get_logger(__name__)
 
+DB_PATH = os.path.join(ROOT_DIR, "prediction_logs.db")
+
 app = FastAPI(title="California Housing Price Predictor")
+
+@app.on_event("startup")
+def startup():
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    logger.info(f"Ensuring DB directory exists and creating/checking DB table at {DB_PATH}")
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS prediction_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    request_data TEXT,
+                    prediction TEXT,
+                    status_code INTEGER,
+                    process_time REAL
+                )
+            """)
+            conn.commit()
+        logger.info("SQLite table 'prediction_logs' is ready.")
+    except Exception as e:
+        logger.error(f"Error creating SQLite table: {e}", exc_info=True)
+        raise
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,10 +64,9 @@ try:
     scaler = joblib.load(SCALER_PATH)
     logger.info("Model and scaler loaded successfully.")
 except Exception as e:
-    logger.error("Failed to load model or scaler: %s", e)
+    logger.error(f"Failed to load model or scaler: {e}", exc_info=True)
     raise e
 
-# List the exact categories your model expects for ocean_proximity, same as training
 OCEAN_CATEGORIES = [
     "<1H OCEAN",
     "INLAND",
@@ -45,7 +75,6 @@ OCEAN_CATEGORIES = [
     "NEAR OCEAN"
 ]
 
-# The full list of features expected by scaler (numeric + one-hot encoded)
 FEATURE_COLUMNS = [
     'longitude', 'latitude', 'housing_median_age', 'total_rooms',
     'total_bedrooms', 'population', 'households', 'median_income',
@@ -54,7 +83,28 @@ FEATURE_COLUMNS = [
     'ocean_proximity_NEAR OCEAN'
 ]
 
-N_FEATURES = len(FEATURE_COLUMNS)
+def log_prediction(timestamp, request_data, prediction, status_code, process_time):
+    try:
+        logger.info(f"Logging prediction at {timestamp}")
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO prediction_logs (timestamp, request_data, prediction, status_code, process_time)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    timestamp,
+                    json.dumps(request_data),
+                    json.dumps(prediction),
+                    status_code,
+                    process_time
+                )
+            )
+            conn.commit()
+        logger.info("Prediction logged successfully.")
+    except Exception as e:
+        logger.error(f"Failed to insert prediction log: {e}", exc_info=True)
 
 @app.get("/")
 def read_root():
@@ -62,39 +112,43 @@ def read_root():
 
 @app.post("/predict/")
 def predict(input_data: HousingInput):
+    start_time = time.time()
     try:
-        # Convert input to DataFrame
+        logger.info("Received prediction request")
         df = pd.DataFrame([input_data.dict()])
 
-        # One-hot encode ocean_proximity with fixed categories and prefix
+        # One-hot encode ocean proximity
         ocean_dummies = pd.get_dummies(df['ocean_proximity'], prefix='ocean_proximity')
-
-        # Add missing ocean categories with zeros if not present in input
         for cat in OCEAN_CATEGORIES:
             col_name = f'ocean_proximity_{cat}'
             if col_name not in ocean_dummies.columns:
                 ocean_dummies[col_name] = 0
 
-        # Drop original ocean_proximity column and concat one-hot columns
         df = df.drop(columns=['ocean_proximity'])
         df = pd.concat([df, ocean_dummies], axis=1)
-
-        # Reorder columns exactly as expected by scaler/model
         df = df.reindex(columns=FEATURE_COLUMNS, fill_value=0)
 
-        # Scale input
         input_scaled = scaler.transform(df)
-
-        # Predict
         prediction = model.predict(input_scaled)
+        prediction_list = prediction.tolist()
 
-        logger.info("Prediction made for input: %s", input_data.dict())
-        return {"predictions": prediction.tolist()}
+        process_time = (time.time() - start_time) * 1000  # ms
+        timestamp = datetime.now().isoformat()
+
+        log_prediction(timestamp, input_data.dict(), prediction_list, 200, process_time)
+
+        logger.info(f"Prediction made for input: {input_data.dict()}, Output: {prediction_list}, Time: {process_time:.2f}ms")
+        return {"predictions": prediction_list}
 
     except Exception as e:
-        logger.error("Prediction failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        process_time = (time.time() - start_time) * 1000
+        timestamp = datetime.now().isoformat()
 
-# Register Prometheus instrumentation here (before startup)
+        logger.error(f"Prediction failed: {e}", exc_info=True)
+        log_prediction(timestamp, input_data.dict(), [], 500, process_time)
+
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Prometheus instrumentation
 instrumentator = Instrumentator()
 instrumentator.instrument(app).expose(app)
