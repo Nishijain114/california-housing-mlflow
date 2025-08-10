@@ -1,15 +1,18 @@
-# ---------------------------------------------------------------
-# File: Dockerfile
-# Description:
-# Container definition to serve the California Housing model API
-# using Flask and MLflow. This image exposes the REST endpoint
-# on port 9696 and runs api_service.py inside a slim Python base.
-# ---------------------------------------------------------------
+FROM python:3.9-slim
 
-FROM python:3.9
-
+# Set working directory
 WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Install dependencies first (caching optimization)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY src/ ./src
+COPY models/ ./models
+
+# Expose the API port
+EXPOSE 8000
+
+# Start the FastAPI app
+CMD ["uvicorn", "src.api.predict_api:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -43,7 +43,6 @@ def train_and_log_model(model, model_name, X_train, y_train, X_test, y_test):
             signature=signature,
             input_example=input_example
         )
-
         return model, mse
 
 def main():
