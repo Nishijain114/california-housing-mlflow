@@ -50,11 +50,16 @@ jobs:
 
       - name: Run Docker container
         run: |
+          docker rm -f california_housing_container || true
           docker run -d -p 8000:8000 --name california_housing_container nishijain411/california_housing:latest
           sleep 10
 
       - name: Run test_prediction test with pytest
         run: pytest tests/test_prediction_pytest.py --maxfail=3 --disable-warnings -q
+
+      - name: View container logs
+        if: failure()
+        run: docker logs california_housing_container
 
       - name: Stop and remove container
         run: |
